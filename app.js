@@ -14,7 +14,7 @@ var Availability = require('./models/availability');
 var Candidate = require('./models/candidate');
 var Comment = require('./models/comment');
 User.sync().then(() => {
-  // Schedule.belongsTo(User, {foreignKey: 'createdBy'});
+  Schedule.belongsTo(User, {foreignKey: 'createdBy'});
   Schedule.sync();
   Comment.belongsTo(User, {foreignKey: 'userId'});
   Comment.sync();
@@ -58,7 +58,10 @@ passport.use(new GitHubStrategy({
 var indexRouter = require('./routes/index');
 var loginRouter = require('./routes/login');
 var logoutRouter = require('./routes/logout');
-const { request } = require('express');
+var schedulesRouter = require('./routes/schedules');
+var availabilitiesRouter = require('./routes/availabilities');
+var commentsRouter = require('./routes/comments');
+
 
 var app = express();
 app.use(helmet());
@@ -80,6 +83,10 @@ app.use(passport.session());
 app.use('/', indexRouter);
 app.use('/login', loginRouter);
 app.use('/logout', logoutRouter);
+app.use('/schedules', schedulesRouter);
+app.use('/schedules', availabilitiesRouter);
+app.use('/schedules', commentsRouter);
+
 
 app.get('/auth/github',
   passport.authenticate('github', { scope: ['user:email'] }),
@@ -89,7 +96,15 @@ app.get('/auth/github',
 app.get('/auth/github/callback',
   passport.authenticate('github', { failureRedirect: '/login' }),
   function (req, res) {
-    res.redirect('/');
+    var loginFrom = req.cookies.loginFrom;
+    // オープンリダイレクタ脆弱性対策
+    if (loginFrom &&
+      loginFrom.startsWith('/')) {
+      res.clearCookie('loginFrom');
+      res.redirect(loginFrom);
+    } else {
+      res.redirect('/');
+    }
 });
 
 // catch 404 and forward to error handler
